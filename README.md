@@ -1,0 +1,2 @@
+# swgmanager
+SWG Manager Utiltiy
