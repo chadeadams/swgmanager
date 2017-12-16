@@ -17,7 +17,7 @@ use Data::Dumper;
 #Autoflush On:
 $| = 1;
 
-#Setup Config Options
+#Setup Config Options a
 
 
 #temp specificed options
@@ -41,22 +41,24 @@ show_menu();
 #Functions
 sub show_menu {
   cls();
-  print "================================================================\n";
-  print "|              Star Wars Galaxies Core3 Emulator               |\n";
-  print "|                      User/Account Manager                    |\n";
-  print "================================================================\n";
-  print "|                  Server: " . $servername . "                       \n";
+  print "        ================================================================\n";
+  print "        |              Star Wars Galaxies Core3 Emulator               |\n";
+  print "        |                      User/Account Manager                    |\n";
+  print "        ================================================================\n";
+  print "                          Server: " . $servername . "                       \n";
   my $numb_accounts = count_accounts();
   my $numb_characters = count_characters();
-  print "    Number of accounts: " . $numb_accounts . "   Number of Characters: ". $numb_characters ."\n";
+  print "              Number of accounts: " . $numb_accounts . "   Number of Characters: ". $numb_characters ."\n";
   print "\n\n";
-  print "                  <S>... Search For Account\n";
-  print "                  <V>... View Account\n";
-  print "                  <I>... Accounts Info\n";
-  print "                  <A>... Show All Accounts\n";
-  print "                  <H>... Help\n";
+  print "         General Information                       Server Actions \n";
+  print "  ==================================   =====================================\n";
+  print "   <S>... Search/View An Account         <SERVER>... Server Information\n";
+  print "   <V>... View All Account                  <MON>... Monitor Server\n";
+  print "   <A>... View Admin Accounts\n";
+  print "   <I>... Accounts Info\n";
+  print "   <H>... Help\n";
   print "\n\n";
-  print "                  <Q>... Quit Program\n";
+  print "                           <Q>... Quit Program\n";
   print "\n\n";
   get_option();
 }
@@ -69,11 +71,10 @@ sub get_option {
 
       switch($choice) {
           case "Q"  {exit;}
-          case "V"  {show_account();}
-          case "S"  {print "running s"; show_menu();}
-          case "T"  {test();}
+          case "S"  {show_account();}
           case "H"  {help();}
-          case "A"  {show_all_accounts();}
+          case "V"  {show_all_accounts();}
+          case "A"  {show_admin_accounts();}
           else {show_menu();}
         }
 }
@@ -113,9 +114,9 @@ sub show_account {
   my $sth = $dbh->prepare("SELECT * FROM accounts WHERE username = '$username_given' LIMIT 1");
   $sth->execute();
   #Pretty display
-  print "======================================================\n";
-  print "       Account Details for: " . $username_given . "\n";
-  print "======================================================\n";
+  print "=============================================================\n";
+  print "  Account Details for account: " . $username_given . "\n";
+  print "=============================================================\n";
   print "\n";
 
   while (my $ref = $sth->fetchrow_hashref()) {
@@ -129,7 +130,21 @@ sub show_account {
   print "Admin Level: " . $ref->{'admin_level'} . "\n";
   print "Salt: " . $ref->{'salt'} . "\n";
   #warn Dumper($ref);
-  print "\n\nPress any key to exit...\n"; <STDIN>; 
+
+  print "\n\n<S>...Show Characters on Account    <Q>.... Quit to Menu\n";
+  print "Your command -> ";  my $choice = <STDIN>;
+  $choice = uc($choice);
+  my $account_id = $ref->{'account_id'};
+
+  switch ($choice) {
+    case "S"  {show_characters($account_id)}
+    case "Q"  {show_menu();}
+    else {}
+
+  }
+
+
+  #print "\n\nPress any key to exit...\n"; <STDIN>;
 
 }
   print "\n\n";
@@ -138,7 +153,25 @@ sub show_account {
 
 }
 
+sub show_characters {
+  print "running";
+  <STDIN>;
+  my $passed_id = shift;
+  my $character_select = $dbh->prepare("SELECT firstname, surname, creation_date FROM characters WHERE account_id = ''$passed_id'");
+  $character_select->execute();
+  print "===========================================================\n";
+  print "  Characters for account: \n";
+  print "===========================================================\n";
+  print "\n";
+  while (my $ref_char = $character_select->fetchrow_hashref()) {
+      print "First Name: " . $ref_char->{'firstname'} . " " . "Last Name: " . $ref_char->{'lastname'} . " " . "Created: " . $ref_char->{'creation_date'} . "\n";
+      <STDIN>;
+  }
 
+  print "Press any key to exit..." . <STDIN>;
+
+
+}
 
 
 sub count_accounts {
@@ -172,7 +205,7 @@ sub show_all_accounts {
   my $sth = $dbh->prepare("SELECT * FROM accounts");
   $sth->execute();
   my $count_shown = 0;
-  print "============================================================\n";
+  print "===============================================================================\n";
   my $count = 0;
   my $total_count = 0;
   while (my $ref = $sth->fetchrow_hashref()) {
@@ -180,14 +213,68 @@ sub show_all_accounts {
     $total_count = $total_count + 1;
     if ($count == 10){
       $count = 0;
-      print "Press any key...\n";  <STDIN>;
-    }
+      print "\n\n";
+      print "Options: <ENTER>... Continue   <Q>... Quit To Menu\n";
+      print "Please press a key -> ";
+      my $answer = <STDIN>;
+      print "\n";
+      chomp($answer);
+      $answer = uc($answer);
+      switch ($answer){
+          case ""  {}
+          case "Q" {show_menu();}
+          else {}
+      }
 
-   print "Number: $total_count  Username: " . $ref->{'username'} . "  Date Created: " . $ref->{'created'} . "\n";
+    }
+  my $username_clean = substr($ref->{'username'}, 0, 20);
+     print "Number: $total_count  Username: " . $username_clean . " -> " . $ref->{'created'} . "\n";
   }
+  print "\n";
   print "\n\nTotal number of accounts found and displayed: $total_count\n";
-  print "=============================================================\n\n";
+  print "===============================================================================\n";
   print "Press any key to exit... " . <STDIN>;
   disconnect_mysql();
   show_menu();
+}
+
+sub show_admin_accounts {
+  my $numb_accounts = count_accounts();
+  print "Total number of ADMIN accounts found: " . $numb_accounts . "\n";
+  connect_mysql();
+  my $sth = $dbh->prepare("SELECT * FROM accounts WHERE admin_level=15");
+  $sth->execute();
+  my $count_shown = 0;
+  print "===============================================================================\n";
+  my $count = 0;
+  my $total_count = 0;
+  while (my $ref = $sth->fetchrow_hashref()) {
+    $count = $count + 1;
+    $total_count = $total_count + 1;
+    if ($count == 10){
+      $count = 0;
+      print "\n\n";
+      print "Options: <ENTER>... Continue   <Q>... Quit To Menu\n";
+      print "Please press a key -> ";
+      my $answer = <STDIN>;
+      print "\n";
+      chomp($answer);
+      $answer = uc($answer);
+      switch ($answer){
+          case ""  {}
+          case "Q" {show_menu();}
+          else {}
+      }
+
+    }
+  my $username_clean = substr($ref->{'username'}, 0, 20);
+     print "Number: $total_count  Username: " . $username_clean . " -> " . $ref->{'created'} . "\n";
+  }
+  print "\n";
+  print "\n\nTotal number of accounts found and displayed: $total_count\n";
+  print "===============================================================================\n";
+  print "Press any key to exit... " . <STDIN>;
+  disconnect_mysql();
+  show_menu();
+
 }
