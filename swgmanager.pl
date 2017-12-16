@@ -13,9 +13,12 @@ use Switch;
 use Term::ANSIScreen qw(cls);
 use Config::Simple;
 use Data::Dumper;
+use IO::Handle;
 
 #Autoflush On:
-$| = 1;
+#$| = 1;
+STDOUT->autoflush(1); # no need to mess with select()
+
 
 #Setup Config Options a
 
@@ -133,11 +136,12 @@ sub show_account {
 
   print "\n\n<S>...Show Characters on Account    <Q>.... Quit to Menu\n";
   print "Your command -> ";  my $choice = <STDIN>;
+  chomp($choice);
   $choice = uc($choice);
   my $account_id = $ref->{'account_id'};
 
   switch ($choice) {
-    case "S"  {show_characters($account_id)}
+    case "S"  {show_characters($account_id);}
     case "Q"  {show_menu();}
     else {}
 
@@ -154,18 +158,16 @@ sub show_account {
 }
 
 sub show_characters {
-  print "running";
-  <STDIN>;
   my $passed_id = shift;
-  my $character_select = $dbh->prepare("SELECT firstname, surname, creation_date FROM characters WHERE account_id = ''$passed_id'");
+  my $character_select = $dbh->prepare("SELECT firstname, surname, creation_date FROM characters WHERE account_id = $passed_id");
   $character_select->execute();
   print "===========================================================\n";
   print "  Characters for account: \n";
   print "===========================================================\n";
   print "\n";
   while (my $ref_char = $character_select->fetchrow_hashref()) {
-      print "First Name: " . $ref_char->{'firstname'} . " " . "Last Name: " . $ref_char->{'lastname'} . " " . "Created: " . $ref_char->{'creation_date'} . "\n";
-      <STDIN>;
+      print "First Name: $ref_char->{'firstname'} Last Name: $ref_char->{'surname'} Created: $ref_char->{'creation_date'}\n";
+
   }
 
   print "Press any key to exit..." . <STDIN>;
@@ -183,6 +185,18 @@ while (my $ref = $sth->fetchrow_hashref()) {
 $numb_accounts = $numb_accounts + 1;
 }
 return $numb_accounts;
+disconnect_mysql();
+}
+
+sub count_admin_accounts {
+connect_mysql();
+my $sth = $dbh->prepare("SELECT * FROM accounts WHERE admin_level = '15'");
+$sth->execute();
+my $numb_admin_accounts = 0;
+while (my $ref = $sth->fetchrow_hashref()) {
+$numb_admin_accounts = $numb_admin_accounts + 1;
+}
+return $numb_admin_accounts;
 disconnect_mysql();
 }
 
@@ -239,8 +253,8 @@ sub show_all_accounts {
 }
 
 sub show_admin_accounts {
-  my $numb_accounts = count_accounts();
-  print "Total number of ADMIN accounts found: " . $numb_accounts . "\n";
+  my $numb_admin_accounts = count_admin_accounts();
+  print "Total number of ADMIN accounts found: " . $numb_admin_accounts . "\n";
   connect_mysql();
   my $sth = $dbh->prepare("SELECT * FROM accounts WHERE admin_level=15");
   $sth->execute();
@@ -271,7 +285,7 @@ sub show_admin_accounts {
      print "Number: $total_count  Username: " . $username_clean . " -> " . $ref->{'created'} . "\n";
   }
   print "\n";
-  print "\n\nTotal number of accounts found and displayed: $total_count\n";
+  print "\n\nTotal number of ADMIN accounts found and displayed: $total_count\n";
   print "===============================================================================\n";
   print "Press any key to exit... " . <STDIN>;
   disconnect_mysql();
