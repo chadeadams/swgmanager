@@ -14,6 +14,9 @@ use Term::ANSIScreen qw(cls);
 use Config::Simple;
 use Data::Dumper;
 use IO::Handle;
+use MIME::Base64;
+use Socket;
+use XML::LibXML;
 
 #Autoflush On:
 #$| = 1;
@@ -26,7 +29,9 @@ STDOUT->autoflush(1); # no need to mess with select()
 #temp specificed options
 our $dbname = "mysql";
 our $mysql_server = "live.swgresurrection.com";
+our $status_server = "live.swgresurrection.com";
 our $mysql_port = "3306";
+our $status_port = "44455";
 our $mysql_username = "cadams";
 our $mysql_password = "L0cktight4958";
 our $servername = "SWG Resurrection";
@@ -78,6 +83,8 @@ sub get_option {
           case "H"  {help();}
           case "V"  {show_all_accounts();}
           case "A"  {show_admin_accounts();}
+          case "1"  {create_salt();}
+          case "MON" {mon_server();}
           else {show_menu();}
         }
 }
@@ -132,6 +139,7 @@ sub show_account {
   print "Active: " . $ref->{'active'} . "\n";
   print "Admin Level: " . $ref->{'admin_level'} . "\n";
   print "Salt: " . $ref->{'salt'} . "\n";
+  print "Length of Salt: " . length($ref->{'salt'}) . "\n";
   #warn Dumper($ref);
 
   print "\n\n<S>...Show Characters on Account    <Q>.... Quit to Menu\n";
@@ -165,6 +173,7 @@ sub show_characters {
   print "  Characters for account: \n";
   print "===========================================================\n";
   print "\n";
+  print " First Name:                 Last Name:                 Date Created:\n";
   while (my $ref_char = $character_select->fetchrow_hashref()) {
       print "First Name: $ref_char->{'firstname'} Last Name: $ref_char->{'surname'} Created: $ref_char->{'creation_date'}\n";
 
@@ -291,4 +300,89 @@ sub show_admin_accounts {
   disconnect_mysql();
   show_menu();
 
+}
+
+
+sub create_salt {
+
+  my $count = 0;
+  my $salt = "";
+  my $max_salt = 15;
+  while ($count < $max_salt) {
+    my @char_list = split(//,"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*?");
+    $salt = $salt . @char_list[int(rand(scalar @char_list))];
+    $count = $count + 1;
+  }
+
+  my $encoded_salt = encode_base64($salt);
+
+  print "Salt = $salt\n";
+  print "Length = " . length($salt) . "\n";
+  print "Encoded Salt =" .  $encoded_salt . "\n";
+  print "Length Encoded = " . length($encoded_salt);
+  print "\n\n";
+  print "Press any key to return to menu..." . <STDIN>;
+  show_menu();
+}
+
+#Monitor Server Code
+
+sub mon_server {
+    socket(SOCKET, PF_INET, SOCK_STREAM, (getprotobyname('tcp'))[2]);
+    connect( SOCKET, pack_sockaddr_in($status_port, inet_aton($status_server)));
+
+    our $data_received = "";
+    my $hold_data = "";
+    while ($data_received=<SOCKET>) {
+      $hold_data .= $data_received;
+    }
+    chomp($hold_data);
+    #print "Data Receieved: " .  $hold_data . "\n";
+    my $dom = XML::LibXML->load_xml(string => $hold_data);
+    #print $hold_data;
+    $dom->findnodes('/zoneServer/users/connected');
+    my $users_connected_temp = $dom->to_literal();
+
+    #Variables:
+    my $extracted_servername = "";
+    my $server_status = "";
+    my $users_connected = "";
+    my $total_max_users = "";
+    my $uptime = "";
+    my $time_pulled = "";
+
+      #Put characters into an array
+    my @info = split /\n/, $users_connected_temp;
+
+    #assign Variables
+   $extracted_servername = $info[1];
+   $server_status = $info[2];
+   $users_connected = $info[4];
+   $total_max_users = $info[6];
+   $uptime = $info[10];
+   $time_pulled = $info[11];
+
+   #Get uptime:
+   my $sec = $uptime;
+
+my $days = int($sec/(24*60*60));
+my $hours = int($sec/(60*60)%24);
+my $mins = int($sec/60)%60;
+my $secs = int($sec%60);
+my $uptime_display = "$days Days $hours Hours $mins Mins $secs Seconds";
+
+
+    #print status_port
+    print "===========================================================================\n";
+    print "|                          Server Status                                  |\n";
+    print "===========================================================================\n";
+    print "     Server: $extracted_servername @ " . $time_pulled . "\n";
+    print "\n";
+    print "                        SERVER STATUS: " . $server_status . "\n";
+    print "                        Server Uptime: " . $uptime_display . "\n";
+    print "                Total Users Connected: " . $users_connected . "\n";
+    print "                  Max Number of Users: " . $total_max_users . "\n";
+    print "\n\n";
+    print "Press any key to exit...";
+    <STDIN>;
 }

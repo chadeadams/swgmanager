@@ -1,0 +1,123 @@
+<html>
+<head>
+<title>RogueOne Registation Page</title>
+<style>
+body {
+	background-image: url('vader.jpg')
+	background-repeat: no-repeat;
+	background-attachment: fixed;
+	background-position: center;
+}
+p#p01 {color:gold}
+</style>
+
+</head>
+<body>
+
+<body background="vader.jpg">
+
+<?php
+function generateSalt($max = 15) {
+	$characterList = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*?";
+	$i = 0;
+	$salt = "";
+	while ($i < $max) {
+		$salt .= $characterList{mt_rand(0, (strlen($characterList) - 1))};
+		$i++;
+	}
+	return base64_encode($salt);
+}
+
+if(isset($_POST['add']))
+{
+	if($_POST['password1'] != $_POST['password2'])
+	{
+		die ("Passwords do not match!");
+	}
+
+	$dbhost = 'localhost:3036';
+	$dbuser = 'swgemu';
+	$dbpass = '123456';
+	$conn = mysql_connect($dbhost, $dbuser, $dbpass);
+	if(! $conn )
+	{
+		die('Could not connect: ' . mysql_error());
+	}
+
+	
+	$dbsecret="swgemus3cr37!";
+	$username = $_POST['username'];
+	$password1= $_POST['password1'];
+	$mysalt = generateSalt();
+	$passwordsalted = hash("sha256", $dbsecret . $password1 . $mysalt);
+	$station_id = rand(0, 10000);
+
+	$checkit = 'SELECT COUNT(*) AS Total FROM accounts WHERE username = "' . $username . '"';
+
+	mysql_select_db('swgemu');
+	$retval = mysql_query( 	$checkit, $conn );
+	if(! $retval )
+	{
+	  die('Could not enter data: ' . mysql_error());
+	}
+	$row = mysql_fetch_row($retval);
+
+	if($row[0] != 0)
+	{
+		die('Account already exists!');
+	}
+
+	$sql = 'INSERT INTO accounts '.
+       '(username, password, station_id, created, salt) '.
+       'VALUES ( "' . $username . '","' . $passwordsalted .'", ' . $station_id . ', NOW(), "' . $mysalt .'")';
+
+	mysql_select_db('swgemu');
+	$retval = mysql_query( $sql, $conn );
+	if(! $retval )
+	{
+	  die('Could not enter data: ' . mysql_error());
+	}
+	echo "<div style ='font:16px/21px Arial;color:gold'>User Account Added Successfully\n</div>";
+
+
+
+	mysql_close($conn);
+
+}
+
+else
+{
+?>
+
+<form method="post" action="<?php $_PHP_SELF ?>">
+<table width="400" border="0" cellspacing="1" cellpadding="2">
+<tr>
+<td width="100"><p id="p01">User Name</td></p>
+<td><input name="username" type="text" id="username"</td>
+
+</tr>
+<tr>
+<td width="100"><p id="p01">Password</td></p>
+<td><input name="password1" type="password" id="password1"></td>
+</tr>
+<tr>
+<td width="100"><p id="p01">Retype Password</td></p>
+<td><input name="password2" type="password" id="password2"></td>
+</tr>
+<tr>
+<td width="100"> </td>
+<td> </td>
+</tr>
+<tr>
+<td width="100"> </td>
+<td>
+<input name="add" type="submit" id="add" value="Add User">
+</td>
+</tr>
+</table>
+</form>
+<?php
+}
+?>
+</body>
+</html>
