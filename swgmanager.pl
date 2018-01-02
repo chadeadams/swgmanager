@@ -229,6 +229,8 @@ sub show_all_accounts {
   $sth->execute();
   my $count_shown = 0;
   print "===============================================================================\n";
+  print "Account Number(order)  Account Username:-> Account Creation Date\n";
+  print "===============================================================================\n";
   my $count = 0;
   my $total_count = 0;
   while (my $ref = $sth->fetchrow_hashref()) {
@@ -268,6 +270,8 @@ sub show_admin_accounts {
   my $sth = $dbh->prepare("SELECT * FROM accounts WHERE admin_level=15");
   $sth->execute();
   my $count_shown = 0;
+  print "===============================================================================\n";
+  print "Account Number(order)  Account Username:-> Account Creation Date\n";
   print "===============================================================================\n";
   my $count = 0;
   my $total_count = 0;
@@ -365,20 +369,26 @@ sub mon_server {
    #Get uptime:
    my $sec = $uptime;
 
+   #Convert status
+   my $server_status_display = uc($server_status);
+
 my $days = int($sec/(24*60*60));
 my $hours = int($sec/(60*60)%24);
 my $mins = int($sec/60)%60;
 my $secs = int($sec%60);
 my $uptime_display = "$days Days $hours Hours $mins Mins $secs Seconds";
 
+#Set time pulled
+my $time_pulled_display = scalar localtime( $time_pulled / 1000);
+cls();
 
     #print status_port
     print "===========================================================================\n";
     print "|                          Server Status                                  |\n";
     print "===========================================================================\n";
-    print "     Server: $extracted_servername @ " . $time_pulled . "\n";
+    print "     Server: $extracted_servername @ " . $time_pulled_display . "\n";
     print "\n";
-    print "                        SERVER STATUS: " . $server_status . "\n";
+    print "                        SERVER STATUS: " . $server_status_display . "\n";
     print "                        Server Uptime: " . $uptime_display . "\n";
     print "                Total Users Connected: " . $users_connected . "\n";
     print "                  Max Number of Users: " . $total_max_users . "\n";
